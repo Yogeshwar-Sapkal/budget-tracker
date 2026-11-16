@@ -188,6 +188,39 @@ class Ledger(private val store: LedgerStore) {
         return created
     }
 
+
+    // ---- Reading for screens -------------------------------------------
+
+    fun categories(): List<Category> = store.categories()
+
+    fun reviewItems(): List<ReviewItem> = store.reviewItems()
+
+    fun expense(id: Long): Expense? = store.expense(id)
+
+    fun expenseItems(month: YearMonth, zone: ZoneId): List<ExpenseItem> {
+        val merchants = store.merchants().associateBy { it.id }
+        val categories = store.categories().associateBy { it.id }
+        return expensesIn(month, zone).map { e ->
+            val m = merchants[e.merchantId]
+            ExpenseItem(e, m?.displayName ?: "Unknown", m?.categoryId, m?.categoryId?.let { categories[it]?.name })
+        }
+    }
+
+    fun merchantsOverview(month: YearMonth, zone: ZoneId): MerchantsOverview {
+        val summary = monthSummary(month, zone)
+        val spent = summary.byMerchant.associateBy { it.merchantId }
+        val byName = compareByDescending<MerchantTotal> { it.totalCents }.thenBy { it.merchantName }
+        val needCategory = store.merchants().filter { it.categoryId == null }.map {
+            spent[it.id] ?: MerchantTotal(it.id, it.displayName, null, 0, 0)
+        }.sortedWith(byName)
+        return MerchantsOverview(needCategory, summary.byMerchant.filter { it.categoryName != null })
+    }
+
+    /** Puts back an Expense that was just deleted. It gets a new id. */
+    fun restoreExpense(expense: Expense) {
+        store.insertExpense(expense.copy(id = 0, likelyDuplicateOfId = null))
+    }
+
     // ---- Reporting -----------------------------------------------------
 
     fun monthSummary(month: YearMonth, zone: ZoneId): MonthSummary {

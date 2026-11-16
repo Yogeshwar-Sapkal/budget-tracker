@@ -11,7 +11,7 @@ See [CONTEXT.md](CONTEXT.md) for the vocabulary, [docs/adr](docs/adr) for decisi
 |---|---|---|
 | `parser` | Pure Kotlin. Notification text in, Expense / Ignored / Needs Review out. Fully tested against the real samples. | JDK 17+ |
 | `ledger` | Pure Kotlin. The rules: saving expenses, merchants and categories, duplicate flagging, month totals. Tested with an in-memory store. | JDK 17+ |
-| `app` | Android app. The notification listener, a Room database behind the ledger, and a placeholder screen. | Android SDK |
+| `app` | Android app. The notification listener, a Room database behind the ledger, and the Compose screens from `docs/ui`. | Android SDK |
 
 ## Run the tests
 

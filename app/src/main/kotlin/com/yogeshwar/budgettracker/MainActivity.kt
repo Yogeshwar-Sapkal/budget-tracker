@@ -1,54 +1,45 @@
 package com.yogeshwar.budgettracker
 
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.TextView
-import java.time.YearMonth
-import java.time.ZoneId
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.yogeshwar.budgettracker.ui.AppRoot
+import com.yogeshwar.budgettracker.ui.BudgetTheme
+import com.yogeshwar.budgettracker.ui.BudgetViewModel
 
-/** Placeholder screen: notification access status plus this month's saved total. */
-class MainActivity : Activity() {
-    private lateinit var status: TextView
-    private lateinit var totals: TextView
+class MainActivity : ComponentActivity() {
+    private val viewModel: BudgetViewModel by viewModels()
+    private var listening by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        status = TextView(this).apply { textSize = 20f }
-        totals = TextView(this).apply { textSize = 18f; setPadding(0, 32, 0, 32) }
-        val button = Button(this).apply {
-            text = "Open notification settings"
-            setOnClickListener { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+        listening = isListening()
+        setContent {
+            BudgetTheme {
+                AppRoot(
+                    vm = viewModel,
+                    listening = listening,
+                    openNotificationSettings = {
+                        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                    },
+                )
+            }
         }
-        setContentView(
-            LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(48, 96, 48, 48)
-                addView(status)
-                addView(totals)
-                addView(button)
-            },
-        )
     }
 
     override fun onResume() {
         super.onResume()
-        val enabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
-            ?.contains(packageName) == true
-        status.text = if (enabled) "Listening to your bank alerts" else "Not listening. Turn on notification access."
-
-        val app = application as BudgetApp
-        app.io.execute {
-            val month = YearMonth.now()
-            val summary = app.ledger.monthSummary(month, ZoneId.systemDefault())
-            val text = "$month: ${dollars(summary.totalCents)} spent\n" +
-                "Last month: ${dollars(summary.previousMonthTotalCents)}"
-            runOnUiThread { totals.text = text }
-        }
+        listening = isListening()
+        viewModel.refresh() // picks up anything saved while the app was in the background
     }
 
-    private fun dollars(cents: Long) = "$%d.%02d".format(cents / 100, kotlin.math.abs(cents % 100))
+    private fun isListening(): Boolean =
+        Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
+            ?.contains(packageName) == true
 }

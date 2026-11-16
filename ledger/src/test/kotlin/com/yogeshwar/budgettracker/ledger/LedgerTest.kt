@@ -260,3 +260,58 @@ class LedgerTest {
         assertEquals(listOf("H&M", "HeyTea", "Remi Flower & Coffee"), oct.byMerchant.map { it.merchantName })
     }
 }
+
+class LedgerReadModelsTest {
+    private val store = InMemoryLedgerStore()
+    private val ledger = Ledger(store).also { it.seedIfNeeded() }
+    private val zone = ZoneId.of("America/New_York")
+    private val oct = YearMonth.of(2026, 10)
+
+    private fun manual(name: String, cents: Long, at: String, categoryId: Long? = null) =
+        ledger.addManualExpense(cents, false, name, Instant.parse(at), categoryId)
+
+    @Test
+    fun `expense items carry merchant and category names newest first`() {
+        manual("HeyTea Grand St", 815, "2026-10-24T23:00:00Z")
+        manual("Mystery Shop", 500, "2026-10-25T20:00:00Z")
+        val items = ledger.expenseItems(oct, zone)
+        assertEquals(listOf("Mystery Shop", "HeyTea"), items.map { it.merchantName })
+        assertNull(items[0].categoryName)
+        assertNull(items[0].categoryId)
+        assertEquals("Coffee & Drinks", items[1].categoryName)
+    }
+
+    @Test
+    fun `merchants overview separates uncategorized from ranked`() {
+        manual("Mystery Shop", 500, "2026-10-25T20:00:00Z")
+        manual("Another Shop", 900, "2026-10-26T20:00:00Z")
+        manual("H&M", 19350, "2026-10-25T20:00:00Z")
+        manual("PATH TAPP PAYGO CP", 325, "2026-10-25T21:00:00Z")
+        val o = ledger.merchantsOverview(oct, zone)
+        assertEquals(listOf("Another Shop", "Mystery Shop"), o.needCategory.map { it.merchantName })
+        assertEquals(listOf("H&M", "PATH"), o.ranked.map { it.merchantName }.filter { it in listOf("H&M", "PATH") })
+        assertEquals(listOf("H&M", "PATH"), o.ranked.map { it.merchantName })
+    }
+
+    @Test
+    fun `an uncategorized merchant with no spend this month is still listed`() {
+        manual("Mystery Shop", 500, "2026-09-25T20:00:00Z")
+        val o = ledger.merchantsOverview(oct, zone)
+        assertEquals(listOf("Mystery Shop" to 0L), o.needCategory.map { it.merchantName to it.totalCents })
+    }
+
+    @Test
+    fun `a deleted expense can be restored`() {
+        val e = manual("Mystery Shop", 500, "2026-10-25T20:00:00Z")
+        ledger.deleteExpense(e.id)
+        assertEquals(0, ledger.expenseItems(oct, zone).size)
+        ledger.restoreExpense(e)
+        assertEquals(500, ledger.monthSummary(oct, zone).totalCents)
+    }
+
+    @Test
+    fun `categories and review count are readable`() {
+        assertEquals(12, ledger.categories().size)
+        assertEquals(0, ledger.reviewItems().size)
+    }
+}

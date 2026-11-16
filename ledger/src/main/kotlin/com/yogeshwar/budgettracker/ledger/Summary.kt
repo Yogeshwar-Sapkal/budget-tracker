@@ -30,3 +30,18 @@ sealed interface RecordOutcome {
     data object AlreadySaved : RecordOutcome
     data object NothingToSave : RecordOutcome
 }
+
+/** An Expense with the names the screens need. */
+data class ExpenseItem(
+    val expense: Expense,
+    val merchantName: String,
+    val categoryId: Long?,
+    val categoryName: String?,
+)
+
+data class MerchantsOverview(
+    /** Merchants with no category, with their total for the month (may be zero). */
+    val needCategory: List<MerchantTotal>,
+    /** Merchants that have a category, biggest spend first. */
+    val ranked: List<MerchantTotal>,
+)
