@@ -72,6 +72,15 @@ interface LedgerDao {
     @Insert
     fun insertIgnoredEntry(entry: IgnoredEntity): Long
 
+    @Query("SELECT MAX(occurredAtMs) FROM expenses WHERE source IS NOT NULL")
+    fun lastExpenseAlertMs(): Long?
+
+    @Query("SELECT MAX(receivedAtMs) FROM review_items")
+    fun lastReviewMs(): Long?
+
+    @Query("SELECT MAX(receivedAtMs) FROM ignored_entries")
+    fun lastIgnoredMs(): Long?
+
     @Query(
         "SELECT (SELECT COUNT(*) FROM expenses WHERE notificationKey = :key) + " +
             "(SELECT COUNT(*) FROM review_items WHERE notificationKey = :key) + " +

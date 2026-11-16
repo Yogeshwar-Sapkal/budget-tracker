@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
@@ -23,7 +24,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +70,7 @@ fun ExpenseFormScreen(
     var occurredAt by remember { mutableStateOf(existing?.expense?.occurredAt ?: Instant.now()) }
     var attempted by remember { mutableStateOf(false) }
     var pickingDate by remember { mutableStateOf(false) }
+    var pickingTime by remember { mutableStateOf(false) }
 
     val check = validateExpenseForm(amount, merchant)
     val invalid = check as? FormResult.Invalid
@@ -108,7 +112,10 @@ fun ExpenseFormScreen(
                 Text("When", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(occurredAt.atZone(zone).format(DateTimeFormatter.ofPattern("EEE, MMM d, h:mm a", Locale.US)), style = MaterialTheme.typography.bodyLarge)
             }
-            TextButton(onClick = { pickingDate = true }) { Text("Change date") }
+            Row {
+                TextButton(onClick = { pickingDate = true }) { Text("Date") }
+                TextButton(onClick = { pickingTime = true }) { Text("Time") }
+            }
         }
 
         Text("Category (optional)", style = MaterialTheme.typography.labelLarge)
@@ -146,6 +153,23 @@ fun ExpenseFormScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Delete expense", color = MaterialTheme.colorScheme.error) }
         }
+    }
+
+    if (pickingTime) {
+        val current = occurredAt.atZone(zone)
+        val state = rememberTimePickerState(initialHour = current.hour, initialMinute = current.minute, is24Hour = false)
+        AlertDialog(
+            onDismissRequest = { pickingTime = false },
+            title = { Text("Time") },
+            text = { TimePicker(state = state) },
+            confirmButton = {
+                TextButton(onClick = {
+                    occurredAt = current.withHour(state.hour).withMinute(state.minute).withSecond(0).withNano(0).toInstant()
+                    pickingTime = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { pickingTime = false }) { Text("Cancel") } },
+        )
     }
 
     if (pickingDate) {

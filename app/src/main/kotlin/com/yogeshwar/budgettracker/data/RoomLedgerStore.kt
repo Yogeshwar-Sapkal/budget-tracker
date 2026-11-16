@@ -69,6 +69,9 @@ class RoomLedgerStore(private val db: AppDatabase) : LedgerStore {
         ),
     )
 
+    override fun lastAlertAt(): Instant? =
+        listOfNotNull(dao.lastExpenseAlertMs(), dao.lastReviewMs(), dao.lastIgnoredMs()).maxOrNull()?.let(Instant::ofEpochMilli)
+
     override fun notificationSeen(key: String) = dao.notificationCount(key) > 0
 
     private fun MerchantEntity.toDomain() = Merchant(id, displayName, categoryId)

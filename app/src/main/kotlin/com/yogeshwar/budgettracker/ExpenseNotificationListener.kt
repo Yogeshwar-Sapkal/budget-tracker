@@ -5,6 +5,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import com.yogeshwar.budgettracker.parser.NotificationParser
+import com.yogeshwar.budgettracker.ledger.RecordOutcome
 import com.yogeshwar.budgettracker.parser.RawNotification
 import java.time.Instant
 
@@ -35,6 +36,7 @@ class ExpenseNotificationListener : NotificationListenerService() {
         app.io.execute {
             try {
                 val outcome = app.ledger.record(result, receivedAt, key)
+                if (outcome != RecordOutcome.NothingToSave && outcome != RecordOutcome.AlreadySaved) app.notifyChanged()
                 Log.d(TAG, "from ${sbn.packageName}: ${result::class.simpleName} -> ${outcome::class.simpleName}")
             } catch (e: Exception) {
                 Log.e(TAG, "could not save notification from ${sbn.packageName}", e)

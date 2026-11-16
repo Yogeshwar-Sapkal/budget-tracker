@@ -51,6 +51,12 @@ class InMemoryLedgerStore : LedgerStore {
     override fun ignoredEntries() = ignored.values.toList()
     override fun insertIgnoredEntry(entry: IgnoredEntry) = entry.copy(id = id()).also { ignored[it.id] = it }
 
+    override fun lastAlertAt(): Instant? = listOfNotNull(
+        expenses.values.filter { it.source != null }.maxOfOrNull { it.occurredAt },
+        reviews.values.maxOfOrNull { it.receivedAt },
+        ignored.values.maxOfOrNull { it.receivedAt },
+    ).maxOrNull()
+
     override fun notificationSeen(key: String) =
         expenses.values.any { it.notificationKey == key } ||
             reviews.values.any { it.notificationKey == key } ||

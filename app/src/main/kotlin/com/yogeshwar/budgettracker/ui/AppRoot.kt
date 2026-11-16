@@ -26,6 +26,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.yogeshwar.budgettracker.ledger.presentation.listeningStatus
+import java.time.Instant
 import kotlinx.coroutines.launch
 
 private sealed interface Overlay {
@@ -47,6 +49,8 @@ fun AppRoot(vm: BudgetViewModel, listening: Boolean, openNotificationSettings: (
     var overlay by remember { mutableStateOf<Overlay?>(if (listening) null else Overlay.Setup) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    val status = remember(listening, vm.lastAlertAt) { listeningStatus(listening, vm.lastAlertAt, Instant.now()) }
 
     BackHandler(enabled = overlay != null) { overlay = null }
 
@@ -95,12 +99,20 @@ fun AppRoot(vm: BudgetViewModel, listening: Boolean, openNotificationSettings: (
                 null -> when (tab) {
                     0 -> HomeScreen(
                         vm = vm,
-                        listening = listening,
+                        status = status,
                         onFixListening = { overlay = Overlay.Setup },
                         onReview = { overlay = Overlay.Review },
                         onSortMerchants = { tab = 2 },
                     )
-                    1 -> ExpensesScreen(vm, onEdit = { overlay = Overlay.Form(it) })
+                    1 -> ExpensesScreen(
+                        vm,
+                        onEdit = { overlay = Overlay.Form(it) },
+                        onExported = { count ->
+                            scope.launch {
+                                snackbar.showSnackbar(if (count != null) "Exported $count expenses" else "Couldn't save the file")
+                            }
+                        },
+                    )
                     else -> MerchantsScreen(vm)
                 }
             }

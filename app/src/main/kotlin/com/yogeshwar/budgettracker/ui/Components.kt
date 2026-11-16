@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.yogeshwar.budgettracker.ledger.presentation.ListeningStatus
 
 @Composable
 fun MonthSwitcher(title: String, canGoNext: Boolean, onPrevious: () -> Unit, onNext: () -> Unit) {
@@ -69,20 +70,32 @@ fun Banner(text: String, actionLabel: String, onAction: () -> Unit, warning: Boo
 }
 
 @Composable
-fun ListeningChip(listening: Boolean, onFix: () -> Unit) {
-    val container = if (listening) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
-    val content = if (listening) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
+fun ListeningChip(status: ListeningStatus, onFix: () -> Unit) {
+    val container = when (status) {
+        ListeningStatus.LISTENING -> MaterialTheme.colorScheme.primaryContainer
+        ListeningStatus.QUIET -> MaterialTheme.colorScheme.tertiaryContainer
+        ListeningStatus.NOT_LISTENING -> MaterialTheme.colorScheme.errorContainer
+    }
+    val content = when (status) {
+        ListeningStatus.LISTENING -> MaterialTheme.colorScheme.onPrimaryContainer
+        ListeningStatus.QUIET -> MaterialTheme.colorScheme.onTertiaryContainer
+        ListeningStatus.NOT_LISTENING -> MaterialTheme.colorScheme.onErrorContainer
+    }
     Row(
         modifier = Modifier
             .background(container, RoundedCornerShape(50))
-            .then(if (listening) Modifier else Modifier.clickable(onClick = onFix))
+            .then(if (status == ListeningStatus.LISTENING) Modifier else Modifier.clickable(onClick = onFix))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(8.dp).background(content, CircleShape))
         Spacer(Modifier.width(8.dp))
         Text(
-            if (listening) "Listening to Chase and Capital One" else "Not listening. Tap to fix",
+            when (status) {
+                ListeningStatus.LISTENING -> "Listening to Chase and Capital One"
+                ListeningStatus.QUIET -> "No bank alerts for 3 days. Tap to check"
+                ListeningStatus.NOT_LISTENING -> "Not listening. Tap to fix"
+            },
             color = content,
             style = MaterialTheme.typography.labelLarge,
         )

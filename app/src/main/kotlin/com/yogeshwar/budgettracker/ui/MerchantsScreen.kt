@@ -9,13 +9,16 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -99,6 +102,7 @@ private fun MerchantDialog(vm: BudgetViewModel, merchant: MerchantTotal, onClose
     var name by remember { mutableStateOf(merchant.merchantName) }
     var categoryId by remember { mutableStateOf(vm.categories.firstOrNull { it.name == merchant.categoryName }?.id) }
     var newCategory by remember { mutableStateOf("") }
+    var merging by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onClose,
@@ -117,6 +121,7 @@ private fun MerchantDialog(vm: BudgetViewModel, merchant: MerchantTotal, onClose
                     }
                 }
                 OutlinedTextField(value = newCategory, onValueChange = { newCategory = it }, label = { Text("Or make a new category") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                TextButton(onClick = { merging = true }) { Text("Merge into another merchant…") }
             }
         },
         confirmButton = {
@@ -126,5 +131,45 @@ private fun MerchantDialog(vm: BudgetViewModel, merchant: MerchantTotal, onClose
             }) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onClose) { Text("Cancel") } },
+    )
+
+    if (merging) MergeDialog(vm, merchant, onCancel = { merging = false }, onMerged = onClose)
+}
+
+@Composable
+private fun MergeDialog(vm: BudgetViewModel, merchant: MerchantTotal, onCancel: () -> Unit, onMerged: () -> Unit) {
+    var target by remember { mutableStateOf<Long?>(null) }
+    val others = vm.allMerchants.filter { it.id != merchant.merchantId }
+    val targetName = others.firstOrNull { it.id == target }?.displayName
+
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Merge ${merchant.merchantName} into…") },
+        text = {
+            Column {
+                Text(
+                    "All its purchases, and future alerts for it, move to the merchant you pick. This can't be undone.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                LazyColumn(Modifier.height(260.dp).padding(top = 8.dp)) {
+                    items(others, key = { it.id }) { m ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { target = m.id }.padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = target == m.id, onClick = { target = m.id })
+                            Text(m.displayName, modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = target != null,
+                onClick = { target?.let { vm.mergeMerchants(merchant.merchantId, it); onMerged() } },
+            ) { Text(if (targetName != null) "Merge into $targetName" else "Merge") }
+        },
+        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
     )
 }

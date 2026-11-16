@@ -41,12 +41,12 @@ Each screen has at most one primary green action: **Add expense** (floating butt
 
 Charts beyond the month comparison, budget limits, goals, alerts, accounts and sync.
 
-## Built so far, and gaps against this design
+## Built so far
 
-Built: all six screens, the month switcher, the listening chip (listening / not listening), duplicate questions, delete with Undo, add and edit with a date picker.
+All six screens, the month switcher, duplicate questions, delete with Undo, add and edit with date and time pickers, merging merchants (from the merchant dialog), the three listening states (listening, no alerts for 3 days, not listening), live refresh when the listener saves something, and CSV export of every expense (button at the bottom of Expenses; you choose where the file goes).
 
-Not built yet:
-- Merging two merchants (the rule exists in the ledger, there is no screen for it).
-- The third chip state, "No alerts seen for 3 days".
-- Changing the time of day on an expense (only the date can be changed).
-- Screens refresh when the app is opened or after an action, not live while it is already open.
+CSV columns: Date, Merchant, Category, Amount, Account, Source, Possible duplicate. Oldest first, refunds negative.
+
+## Not built
+
+Charts beyond the month comparison, budgets, goals, alerts, an Ignored list screen, and importing a CSV back in.

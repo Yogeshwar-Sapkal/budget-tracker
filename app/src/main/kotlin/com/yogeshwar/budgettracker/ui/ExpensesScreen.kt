@@ -1,5 +1,7 @@
 package com.yogeshwar.budgettracker.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,12 +28,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.yogeshwar.budgettracker.ledger.presentation.CsvExport
 import com.yogeshwar.budgettracker.ledger.presentation.expenseGroups
 import java.time.LocalDate
 import java.time.ZoneId
 
 @Composable
-fun ExpensesScreen(vm: BudgetViewModel, onEdit: (Long) -> Unit) {
+fun ExpensesScreen(vm: BudgetViewModel, onEdit: (Long) -> Unit, onExported: (Int?) -> Unit) {
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) vm.exportCsv(uri, onExported)
+    }
     var query by rememberSaveable { mutableStateOf("") }
     val groups = remember(vm.items, query) {
         expenseGroups(vm.items, ZoneId.systemDefault(), LocalDate.now(), query)
@@ -101,6 +107,12 @@ fun ExpensesScreen(vm: BudgetViewModel, onEdit: (Long) -> Unit) {
                     }
                 }
             }
+        }
+        item {
+            OutlinedButton(
+                onClick = { exportLauncher.launch(CsvExport.fileName(LocalDate.now())) },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            ) { Text("Export all expenses as CSV") }
         }
     }
 }

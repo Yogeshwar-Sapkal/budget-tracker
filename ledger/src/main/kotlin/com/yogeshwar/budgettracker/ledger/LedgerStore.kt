@@ -37,6 +37,9 @@ interface LedgerStore {
     fun ignoredEntries(): List<IgnoredEntry>
     fun insertIgnoredEntry(entry: IgnoredEntry): IgnoredEntry
 
+    /** When the most recent bank notification was saved (as an expense, review item or ignored entry). Null if none yet. */
+    fun lastAlertAt(): Instant?
+
     /** True if a notification with this key was already saved as an Expense, review item or ignored entry. */
     fun notificationSeen(key: String): Boolean
 }

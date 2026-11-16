@@ -14,11 +14,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.yogeshwar.budgettracker.ledger.presentation.ListeningStatus
 
 @Composable
 fun HomeScreen(
     vm: BudgetViewModel,
-    listening: Boolean,
+    status: ListeningStatus,
     onFixListening: () -> Unit,
     onReview: () -> Unit,
     onSortMerchants: () -> Unit,
@@ -31,7 +32,7 @@ fun HomeScreen(
         item {
             MonthSwitcher(home?.monthTitle ?: "", vm.canGoNext, vm::previousMonth, vm::nextMonth)
         }
-        item { ListeningChip(listening, onFixListening) }
+        item { ListeningChip(status, onFixListening) }
         if (home == null) return@LazyColumn
 
         item {

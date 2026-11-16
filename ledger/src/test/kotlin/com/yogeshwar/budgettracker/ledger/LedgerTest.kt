@@ -315,3 +315,37 @@ class LedgerReadModelsTest {
         assertEquals(0, ledger.reviewItems().size)
     }
 }
+
+class LedgerExportAndStatusTest {
+    private val store = InMemoryLedgerStore()
+    private val ledger = Ledger(store).also { it.seedIfNeeded() }
+    private val t0 = Instant.parse("2026-10-24T19:00:00Z")
+
+    private fun parsed(cents: Long, merchant: String) = ParseResult.Expense(
+        ParsedTransaction(NotificationSource.CAPITAL_ONE, TransactionKind.PURCHASE, cents, merchant, "1111", null),
+    )
+
+    @Test
+    fun `all expense items span every month`() {
+        ledger.addManualExpense(100, false, "A", Instant.parse("2025-01-05T12:00:00Z"))
+        ledger.addManualExpense(200, false, "B", Instant.parse("2026-10-05T12:00:00Z"))
+        assertEquals(2, ledger.allExpenseItems().size)
+    }
+
+    @Test
+    fun `last alert time ignores manual expenses`() {
+        assertNull(ledger.lastAlertAt())
+        ledger.addManualExpense(100, false, "A", t0)
+        assertNull(ledger.lastAlertAt())
+        ledger.record(parsed(500, "HEYTEA GRAND ST"), t0.plusSeconds(60), "k1")
+        assertEquals(t0.plusSeconds(60), ledger.lastAlertAt())
+        val raw = RawNotification("com.chase.sig.android", "Chase", "new wording")
+        ledger.record(ParseResult.NeedsReview(raw, NotificationSource.CHASE, "x"), t0.plusSeconds(600), "k2")
+        assertEquals(t0.plusSeconds(600), ledger.lastAlertAt())
+    }
+
+    @Test
+    fun `merchants are listed for picking a merge target`() {
+        assertTrue(ledger.merchants().any { it.displayName == "HeyTea" })
+    }
+}

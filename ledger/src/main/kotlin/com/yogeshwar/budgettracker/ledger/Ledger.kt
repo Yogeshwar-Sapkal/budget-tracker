@@ -197,6 +197,20 @@ class Ledger(private val store: LedgerStore) {
 
     fun expense(id: Long): Expense? = store.expense(id)
 
+    fun merchants(): List<Merchant> = store.merchants()
+
+    fun lastAlertAt(): Instant? = store.lastAlertAt()
+
+    /** Every expense in every month, for export. */
+    fun allExpenseItems(): List<ExpenseItem> {
+        val merchants = store.merchants().associateBy { it.id }
+        val categories = store.categories().associateBy { it.id }
+        return store.expensesBetween(Instant.EPOCH, Instant.ofEpochSecond(32_503_680_000L)).map { e ->
+            val m = merchants[e.merchantId]
+            ExpenseItem(e, m?.displayName ?: "Unknown", m?.categoryId, m?.categoryId?.let { categories[it]?.name })
+        }
+    }
+
     fun expenseItems(month: YearMonth, zone: ZoneId): List<ExpenseItem> {
         val merchants = store.merchants().associateBy { it.id }
         val categories = store.categories().associateBy { it.id }

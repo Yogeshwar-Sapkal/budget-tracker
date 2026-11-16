@@ -1,6 +1,7 @@
 package com.yogeshwar.budgettracker.ui
 
 import android.app.Application
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -10,8 +11,10 @@ import com.yogeshwar.budgettracker.BudgetApp
 import com.yogeshwar.budgettracker.ledger.Category
 import com.yogeshwar.budgettracker.ledger.Expense
 import com.yogeshwar.budgettracker.ledger.ExpenseItem
+import com.yogeshwar.budgettracker.ledger.Merchant
 import com.yogeshwar.budgettracker.ledger.MerchantsOverview
 import com.yogeshwar.budgettracker.ledger.ReviewItem
+import com.yogeshwar.budgettracker.ledger.presentation.CsvExport
 import com.yogeshwar.budgettracker.ledger.presentation.HomeModel
 import com.yogeshwar.budgettracker.ledger.presentation.homeModel
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +26,8 @@ import java.time.ZoneId
 
 /** Holds what the screens show and runs every ledger call off the main thread. */
 class BudgetViewModel(application: Application) : AndroidViewModel(application) {
-    private val ledger = (application as BudgetApp).ledger
+    private val budgetApp = application as BudgetApp
+    private val ledger = budgetApp.ledger
 
     var month by mutableStateOf(YearMonth.now())
         private set
@@ -37,8 +41,17 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
         private set
     var reviewItems by mutableStateOf<List<ReviewItem>>(emptyList())
         private set
+    var allMerchants by mutableStateOf<List<Merchant>>(emptyList())
+        private set
+    var lastAlertAt by mutableStateOf<Instant?>(null)
+        private set
 
     private var lastDeleted: Expense? = null
+
+    init {
+        // Reload whenever the listener saves something, even while the app is open.
+        viewModelScope.launch { budgetApp.changes.collect { refresh() } }
+    }
 
     val canGoNext: Boolean get() = month < YearMonth.now()
 
@@ -57,6 +70,8 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
         val newHome = homeModel(ledger.monthSummary(m, zone), reviews.size, overview.needCategory.size)
         val newItems = ledger.expenseItems(m, zone)
         val cats = ledger.categories()
+        val merchantList = ledger.merchants().sortedBy { it.displayName.lowercase() }
+        val lastAlert = ledger.lastAlertAt()
         withContext(Dispatchers.Main) {
             if (m != month) return@withContext // the owner moved to another month meanwhile
             home = newHome
@@ -64,6 +79,8 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
             merchants = overview
             categories = cats
             reviewItems = reviews
+            allMerchants = merchantList
+            lastAlertAt = lastAlert
         }
     }
 
@@ -111,6 +128,26 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
         if (newName.isNotBlank()) ledger.renameMerchant(merchantId, newName)
         val target = if (newCategoryName.isNotBlank()) ledger.addCategory(newCategoryName).id else categoryId
         ledger.assignCategory(merchantId, target)
+    }
+
+    fun mergeMerchants(fromId: Long, intoId: Long) = act { ledger.mergeMerchants(fromId, intoId) }
+
+    // ---- Export --------------------------------------------------------
+
+    /** Writes every expense as CSV to [uri]. Calls [onDone] with the number of expenses, or null if it failed. */
+    fun exportCsv(uri: Uri, onDone: (Int?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val count = try {
+                val items = ledger.allExpenseItems()
+                val csv = CsvExport.expensesCsv(items, ZoneId.systemDefault())
+                getApplication<Application>().contentResolver.openOutputStream(uri)?.use { it.write(csv.toByteArray(Charsets.UTF_8)) }
+                    ?: throw java.io.IOException("could not open the file")
+                items.size
+            } catch (e: Exception) {
+                null
+            }
+            withContext(Dispatchers.Main) { onDone(count) }
+        }
     }
 
     // ---- Needs review --------------------------------------------------
