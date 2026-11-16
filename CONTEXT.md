@@ -5,7 +5,7 @@ A personal app that turns bank and card notifications on one phone into a record
 ## Language
 
 **Notification Source**:
-A bank app whose notifications the tracker reads. Currently Chase and Capital One.
+A bank app whose notifications the tracker reads. Currently Chase and Capital One. Wallet apps (such as Google Wallet) are not Notification Sources, even though they also announce tap-to-pay purchases.
 _Avoid_: Provider, integration, bank feed
 
 **Transaction**:
@@ -31,6 +31,10 @@ _Avoid_: Alias, merchant string
 **Category**:
 A group of Merchants for budgeting, such as Coffee & Drinks. The owner assigns a Category to a Merchant once, and it applies to all of that Merchant's Expenses. Every new Merchant starts Uncategorized.
 _Avoid_: Tag, type, bucket
+
+**Likely Duplicate**:
+A Transaction with the same amount and Merchant as another within about 5 minutes. It is flagged for the owner, never silently dropped.
+_Avoid_: Duplicate, repeat
 
 **Needs Review**:
 The holding list for notifications the tracker could not read as a Transaction. Nothing is silently dropped.
