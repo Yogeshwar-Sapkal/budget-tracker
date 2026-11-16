@@ -4,6 +4,8 @@ A starting point only. Categories and merchant assignments can all be changed in
 
 ## Categories
 
+A Merchant with no category is shown as "Uncategorized". That is the absence of a category, not a category itself.
+
 | Category | Notes |
 |---|---|
 | Food & Dining | Restaurants, takeout, pizza, dessert |
@@ -18,7 +20,6 @@ A starting point only. Categories and merchant assignments can all be changed in
 | Travel | Flights, hotels, trips |
 | Cash | ATM withdrawals |
 | Other | Anything that fits nowhere else |
-| Uncategorized | Default for any new merchant |
 
 ## Merchants seen in the sample notifications
 
