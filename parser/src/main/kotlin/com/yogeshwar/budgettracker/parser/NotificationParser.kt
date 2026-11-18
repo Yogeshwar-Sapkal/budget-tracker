@@ -88,8 +88,9 @@ class NotificationParser(
 
     companion object {
         /**
-         * Package names are best guesses and must be confirmed on the phone: the app logs the
-         * package of every notification it sees during setup.
+         * Chase's package name is confirmed on a real phone (a purchase was recorded).
+         * Capital One's is still a best guess: if its alerts never appear, check
+         * `adb logcat -s BudgetTracker`, which logs the sending package of every notification.
          */
         val DEFAULT_SOURCE_PACKAGES: Map<String, NotificationSource> = mapOf(
             "com.chase.sig.android" to NotificationSource.CHASE,
