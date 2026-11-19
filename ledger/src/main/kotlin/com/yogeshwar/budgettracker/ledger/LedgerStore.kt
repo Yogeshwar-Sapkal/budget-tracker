@@ -20,6 +20,8 @@ interface LedgerStore {
 
     /** Which Merchant a normalized merchant key belongs to. Several keys can point to one Merchant. */
     fun merchantIdForKey(key: String): Long?
+    /** Every normalized merchant key and the Merchant it belongs to. */
+    fun aliases(): Map<String, Long>
     fun setAlias(key: String, merchantId: Long)
     fun repointAliases(fromMerchantId: Long, toMerchantId: Long)
 

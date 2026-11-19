@@ -45,3 +45,11 @@ data class MerchantsOverview(
     /** Merchants that have a category, biggest spend first. */
     val ranked: List<MerchantTotal>,
 )
+
+/** What an import did. [problem] is set when the file could not be used at all. */
+data class ImportResult(
+    val imported: Int = 0,
+    val alreadyThere: Int = 0,
+    val invalid: Int = 0,
+    val problem: String? = null,
+)

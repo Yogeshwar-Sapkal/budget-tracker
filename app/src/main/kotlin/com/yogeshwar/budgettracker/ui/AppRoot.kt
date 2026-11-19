@@ -107,6 +107,7 @@ fun AppRoot(vm: BudgetViewModel, listening: Boolean, openNotificationSettings: (
                     1 -> ExpensesScreen(
                         vm,
                         onEdit = { overlay = Overlay.Form(it) },
+                        onImported = { message -> scope.launch { snackbar.showSnackbar(message) } },
                         onExported = { count ->
                             scope.launch {
                                 snackbar.showSnackbar(if (count != null) "Exported $count expenses" else "Couldn't save the file")

@@ -2,6 +2,7 @@ package com.yogeshwar.budgettracker.ledger.presentation
 
 import com.yogeshwar.budgettracker.ledger.Expense
 import com.yogeshwar.budgettracker.ledger.ExpenseItem
+import com.yogeshwar.budgettracker.ledger.ImportResult
 import com.yogeshwar.budgettracker.parser.NotificationSource
 import java.time.Duration
 import java.time.Instant
@@ -32,8 +33,8 @@ class ExportAndStatusTest {
             zone,
         )
         assertEquals(
-            "Date,Merchant,Category,Amount,Account,Source,Possible duplicate$crlf" +
-                "2026-10-24 19:00,HeyTea,Coffee & Drinks,8.15,1111,Capital One,$crlf",
+            "Date,Merchant,Category,Amount,Account,Source,Possible duplicate,Merchant aliases$crlf" +
+                "2026-10-24 19:00,HeyTea,Coffee & Drinks,8.15,1111,Capital One,,$crlf",
             csv,
         )
     }
@@ -48,8 +49,8 @@ class ExportAndStatusTest {
             zone,
         )
         val rows = csv.trimEnd().split(crlf)
-        assertEquals("2026-10-24 08:00,A,Uncategorized,1.00,,Manual,", rows[1])
-        assertEquals("2026-10-25 08:00,B,Uncategorized,2.00,Chase Freedom Unlimited Visa,Chase,", rows[2])
+        assertEquals("2026-10-24 08:00,A,Uncategorized,1.00,,Manual,,", rows[1])
+        assertEquals("2026-10-25 08:00,B,Uncategorized,2.00,Chase Freedom Unlimited Visa,Chase,,", rows[2])
     }
 
     @Test
@@ -58,7 +59,7 @@ class ExportAndStatusTest {
             listOf(item("H&M", -2500, "2026-10-24T12:00:00Z", dup = 7)),
             zone,
         )
-        assertEquals("2026-10-24 08:00,H&M,Uncategorized,-25.00,1111,Capital One,Yes", csv.trimEnd().split(crlf)[1])
+        assertEquals("2026-10-24 08:00,H&M,Uncategorized,-25.00,1111,Capital One,Yes,", csv.trimEnd().split(crlf)[1])
     }
 
     @Test
@@ -82,8 +83,27 @@ class ExportAndStatusTest {
     }
 
     @Test
+    fun `merchant aliases are listed in the last column`() {
+        val item = item("HeyTea", 815, "2026-10-24T23:00:00Z")
+        val csv = CsvExport.expensesCsv(listOf(item), zone, mapOf(1L to listOf("heytea", "heytea grand st")))
+        assertEquals("2026-10-24 19:00,HeyTea,Uncategorized,8.15,1111,Capital One,,heytea | heytea grand st", csv.trimEnd().split(crlf)[1])
+    }
+
+    @Test
     fun `empty export is just the header`() {
-        assertEquals("Date,Merchant,Category,Amount,Account,Source,Possible duplicate$crlf", CsvExport.expensesCsv(emptyList(), zone))
+        assertEquals("Date,Merchant,Category,Amount,Account,Source,Possible duplicate,Merchant aliases$crlf", CsvExport.expensesCsv(emptyList(), zone))
+    }
+
+    // ---- Import summary ------------------------------------------------
+
+    @Test
+    fun `import summaries are plain words`() {
+        assertEquals("Imported 3 expenses, 2 already here, 1 row skipped", ImportResult(3, 2, 1).summaryText())
+        assertEquals("Imported 1 expense", ImportResult(1).summaryText())
+        assertEquals("Nothing new: all 5 expenses were already here.", ImportResult(0, 5).summaryText())
+        assertEquals("That file had no expenses.", ImportResult().summaryText())
+        assertEquals("Imported 0 expenses, 2 rows skipped", ImportResult(0, 0, 2).summaryText())
+        assertEquals("Not a Budget Tracker file", ImportResult(problem = "Not a Budget Tracker file").summaryText())
     }
 
     @Test

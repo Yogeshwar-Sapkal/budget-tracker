@@ -10,14 +10,21 @@ import kotlin.math.abs
 
 /** Turns expenses into a CSV a spreadsheet can open. */
 object CsvExport {
-    private val HEADER = listOf("Date", "Merchant", "Category", "Amount", "Account", "Source", "Possible duplicate")
+    private val HEADER = listOf("Date", "Merchant", "Category", "Amount", "Account", "Source", "Possible duplicate", "Merchant aliases")
     private val DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.US)
     private const val EOL = "\r\n"
+
+    /** Separates the match names of one merchant inside the "Merchant aliases" cell. */
+    const val ALIAS_SEPARATOR = " | "
 
     fun fileName(today: LocalDate) = "budget-tracker-$today.csv"
 
     /** Oldest first, one row per expense, amounts in plain dollars (refunds negative). */
-    fun expensesCsv(items: List<ExpenseItem>, zone: ZoneId): String {
+    fun expensesCsv(
+        items: List<ExpenseItem>,
+        zone: ZoneId,
+        aliasesByMerchant: Map<Long, List<String>> = emptyMap(),
+    ): String {
         val rows = items.sortedBy { it.expense.occurredAt }.map { item ->
             val e = item.expense
             listOf(
@@ -28,6 +35,7 @@ object CsvExport {
                 text(e.accountLabel.orEmpty()),
                 text(sourceName(e.source)),
                 if (e.likelyDuplicateOfId != null) "Yes" else "",
+                text(aliasesByMerchant[e.merchantId].orEmpty().joinToString(ALIAS_SEPARATOR)),
             )
         }
         return (listOf(HEADER) + rows).joinToString(separator = "") { row -> row.joinToString(",") { quote(it) } + EOL }

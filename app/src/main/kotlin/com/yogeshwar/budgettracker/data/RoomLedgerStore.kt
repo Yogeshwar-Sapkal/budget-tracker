@@ -31,6 +31,7 @@ class RoomLedgerStore(private val db: AppDatabase) : LedgerStore {
     override fun deleteMerchant(id: Long) = dao.deleteMerchant(id)
 
     override fun merchantIdForKey(key: String) = dao.merchantIdForKey(key)
+    override fun aliases(): Map<String, Long> = dao.aliases().associate { it.normalizedKey to it.merchantId }
     override fun setAlias(key: String, merchantId: Long) = dao.setAlias(AliasEntity(key, merchantId))
     override fun repointAliases(fromMerchantId: Long, toMerchantId: Long) =
         dao.repointAliases(fromMerchantId, toMerchantId)

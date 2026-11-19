@@ -17,6 +17,7 @@ import com.yogeshwar.budgettracker.ledger.ReviewItem
 import com.yogeshwar.budgettracker.ledger.presentation.CsvExport
 import com.yogeshwar.budgettracker.ledger.presentation.HomeModel
 import com.yogeshwar.budgettracker.ledger.presentation.homeModel
+import com.yogeshwar.budgettracker.ledger.presentation.summaryText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -139,7 +140,7 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) {
             val count = try {
                 val items = ledger.allExpenseItems()
-                val csv = CsvExport.expensesCsv(items, ZoneId.systemDefault())
+                val csv = CsvExport.expensesCsv(items, ZoneId.systemDefault(), ledger.aliasesByMerchant())
                 getApplication<Application>().contentResolver.openOutputStream(uri)?.use { it.write(csv.toByteArray(Charsets.UTF_8)) }
                     ?: throw java.io.IOException("could not open the file")
                 items.size
@@ -147,6 +148,23 @@ class BudgetViewModel(application: Application) : AndroidViewModel(application) 
                 null
             }
             withContext(Dispatchers.Main) { onDone(count) }
+        }
+    }
+
+    /** Adds the expenses from a CSV made by Export. Calls [onDone] with one plain sentence about what happened. */
+    fun importCsv(uri: Uri, onDone: (String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val message = try {
+                val text = getApplication<Application>().contentResolver.openInputStream(uri)
+                    ?.use { it.readBytes().toString(Charsets.UTF_8) }
+                    ?: throw java.io.IOException("could not open the file")
+                val result = ledger.importCsv(text, ZoneId.systemDefault())
+                load()
+                result.summaryText()
+            } catch (e: Exception) {
+                "Couldn't read that file."
+            }
+            withContext(Dispatchers.Main) { onDone(message) }
         }
     }
 

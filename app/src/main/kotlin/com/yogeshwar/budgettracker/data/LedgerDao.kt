@@ -33,6 +33,9 @@ interface LedgerDao {
     @Query("SELECT merchantId FROM merchant_aliases WHERE normalizedKey = :key")
     fun merchantIdForKey(key: String): Long?
 
+    @Query("SELECT * FROM merchant_aliases")
+    fun aliases(): List<AliasEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun setAlias(alias: AliasEntity)
 

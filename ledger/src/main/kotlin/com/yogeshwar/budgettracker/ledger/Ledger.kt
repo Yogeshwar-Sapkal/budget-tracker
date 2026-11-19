@@ -1,12 +1,18 @@
 package com.yogeshwar.budgettracker.ledger
 
+import com.yogeshwar.budgettracker.ledger.presentation.CsvExport
+import com.yogeshwar.budgettracker.ledger.presentation.parseCents
 import com.yogeshwar.budgettracker.parser.MerchantNormalizer
+import com.yogeshwar.budgettracker.parser.NotificationSource
 import com.yogeshwar.budgettracker.parser.ParseResult
 import com.yogeshwar.budgettracker.parser.ParsedTransaction
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 /**
  * The rules of the tracker: what gets saved from a notification, how Merchants and Categories
@@ -201,6 +207,10 @@ class Ledger(private val store: LedgerStore) {
 
     fun lastAlertAt(): Instant? = store.lastAlertAt()
 
+    /** The names each Merchant is known by in bank alerts, for export. */
+    fun aliasesByMerchant(): Map<Long, List<String>> =
+        store.aliases().entries.groupBy({ it.value }, { it.key }).mapValues { it.value.sorted() }
+
     /** Every expense in every month, for export. */
     fun allExpenseItems(): List<ExpenseItem> {
         val merchants = store.merchants().associateBy { it.id }
@@ -233,6 +243,102 @@ class Ledger(private val store: LedgerStore) {
     /** Puts back an Expense that was just deleted. It gets a new id. */
     fun restoreExpense(expense: Expense) {
         store.insertExpense(expense.copy(id = 0, likelyDuplicateOfId = null))
+    }
+
+    // ---- Import --------------------------------------------------------
+
+    /**
+     * Reads a CSV made by [com.yogeshwar.budgettracker.ledger.presentation.CsvExport] and adds what is missing.
+     * Safe to run twice: a row counts as already there when the ledger holds as many expenses with the same
+     * minute, merchant and amount. A category in the file is applied to a merchant that has none yet or has
+     * no expenses; otherwise the category already chosen wins.
+     */
+    fun importCsv(csv: String, zone: ZoneId): ImportResult = store.inTransaction {
+        val rows = CsvParser.parse(csv)
+        val header = rows.firstOrNull()?.map { it.trim().lowercase() }.orEmpty()
+        fun col(name: String) = header.indexOf(name).takeIf { it >= 0 }
+        val dateCol = col("date")
+        val merchantCol = col("merchant")
+        val amountCol = col("amount")
+        if (dateCol == null || merchantCol == null || amountCol == null) {
+            return@inTransaction ImportResult(problem = "That doesn't look like a Budget Tracker export.")
+        }
+        val categoryCol = col("category")
+        val accountCol = col("account")
+        val sourceCol = col("source")
+        val aliasCol = col("merchant aliases")
+
+        val existing = store.expensesBetween(Instant.EPOCH, Instant.ofEpochSecond(32_503_680_000L))
+        val merchantsWithExpenses = existing.map { it.merchantId }.toSet()
+        val existingCounts = existing.groupingBy { Triple(it.occurredAt.truncatedTo(ChronoUnit.MINUTES), it.merchantId, it.amountCents) }.eachCount()
+        val seenInFile = mutableMapOf<Triple<Instant, Long, Long>, Int>()
+
+        var imported = 0
+        var alreadyThere = 0
+        var invalid = 0
+
+        for (row in rows.drop(1)) {
+            fun cell(i: Int?) = i?.let { row.getOrNull(it) }?.let(::undefuse)?.trim().orEmpty()
+
+            val at = parseExportDate(row.getOrNull(dateCol).orEmpty().trim(), zone)
+            val cents = parseSignedCents(row.getOrNull(amountCol).orEmpty().trim())
+            val name = cell(merchantCol)
+            if (at == null || cents == null || name.isEmpty()) { invalid++; continue }
+
+            val aliases = cell(aliasCol).split(CsvExport.ALIAS_SEPARATOR).map { it.trim() }.filter { it.isNotEmpty() }
+            val knownId = (listOf(MerchantNormalizer.normalize(name).key) + aliases).firstNotNullOfOrNull { store.merchantIdForKey(it) }
+
+            val key = Triple(at.truncatedTo(ChronoUnit.MINUTES), knownId ?: -1L, cents)
+            val nth = (seenInFile[key] ?: 0) + 1
+            seenInFile[key] = nth
+            if (knownId != null && nth <= (existingCounts[key] ?: 0)) { alreadyThere++; continue }
+
+            var merchant = knownId?.let { store.merchant(it) }
+            if (merchant == null) {
+                merchant = store.insertMerchant(name, null)
+                store.setAlias(MerchantNormalizer.normalize(name).key, merchant.id)
+            }
+            for (alias in aliases) if (store.merchantIdForKey(alias) == null) store.setAlias(alias, merchant.id)
+
+            val categoryName = cell(categoryCol)
+            if (categoryName.isNotEmpty() && !categoryName.equals(UNCATEGORIZED, ignoreCase = true) &&
+                (merchant.categoryId == null || merchant.id !in merchantsWithExpenses)
+            ) {
+                store.updateMerchant(merchant.copy(categoryId = addCategory(categoryName).id))
+            }
+
+            store.insertExpense(
+                Expense(
+                    merchantId = merchant.id,
+                    amountCents = cents,
+                    occurredAt = at,
+                    source = when (cell(sourceCol)) {
+                        "Chase" -> NotificationSource.CHASE
+                        "Capital One" -> NotificationSource.CAPITAL_ONE
+                        else -> null
+                    },
+                    accountLabel = cell(accountCol).ifEmpty { null },
+                ),
+            )
+            imported++
+        }
+        ImportResult(imported, alreadyThere, invalid)
+    }
+
+    /** Undoes the quote that export adds in front of text a spreadsheet could run as a formula. */
+    private fun undefuse(value: String) =
+        if (value.length > 1 && value[0] == '\'' && value[1] in "=+-@\t\r") value.substring(1) else value
+
+    private fun parseExportDate(text: String, zone: ZoneId): Instant? = try {
+        LocalDateTime.parse(text, EXPORT_DATE).atZone(zone).toInstant()
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun parseSignedCents(text: String): Long? {
+        val negative = text.startsWith("-")
+        val cents = parseCents(text.removePrefix("-")) ?: return null
+        return if (negative) -cents else cents
     }
 
     // ---- Reporting -----------------------------------------------------
@@ -283,5 +389,6 @@ class Ledger(private val store: LedgerStore) {
         const val CASH_MERCHANT = "Cash"
         const val UNCATEGORIZED = "Uncategorized"
         val DUPLICATE_WINDOW: Duration = Duration.ofMinutes(5)
+        private val EXPORT_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     }
 }

@@ -43,10 +43,14 @@ Charts beyond the month comparison, budget limits, goals, alerts, accounts and s
 
 ## Built so far
 
-All six screens, the month switcher, duplicate questions, delete with Undo, add and edit with date and time pickers, merging merchants (from the merchant dialog), the three listening states (listening, no alerts for 3 days, not listening), live refresh when the listener saves something, and CSV export of every expense (button at the bottom of Expenses; you choose where the file goes).
+All six screens, the month switcher, duplicate questions, delete with Undo, add and edit with date and time pickers, merging merchants (from the merchant dialog), the three listening states (listening, no alerts for 3 days, not listening), live refresh when the listener saves something, and CSV export and import (buttons at the bottom of Expenses; you choose the file).
 
-CSV columns: Date, Merchant, Category, Amount, Account, Source, Possible duplicate. Oldest first, refunds negative.
+CSV columns: Date, Merchant, Category, Amount, Account, Source, Possible duplicate, Merchant aliases. Oldest first, refunds negative.
+
+Merchant aliases holds the names each merchant is matched by in bank alerts (for example `heytea grand st`). Import uses them so restored merchants keep catching their alerts, including renamed or merged ones.
+
+Import adds what is missing and skips what is already there (same minute, merchant and amount), so it is safe to run twice. A category in the file is applied to a merchant that has no category or no expenses yet; a category you already chose wins. The Possible duplicate flag is not restored. Files from before the aliases column was added still import.
 
 ## Not built
 
-Charts beyond the month comparison, budgets, goals, alerts, an Ignored list screen, and importing a CSV back in.
+Charts beyond the month comparison, budgets, goals, alerts, and an Ignored list screen.

@@ -34,7 +34,15 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 @Composable
-fun ExpensesScreen(vm: BudgetViewModel, onEdit: (Long) -> Unit, onExported: (Int?) -> Unit) {
+fun ExpensesScreen(
+    vm: BudgetViewModel,
+    onEdit: (Long) -> Unit,
+    onExported: (Int?) -> Unit,
+    onImported: (String) -> Unit,
+) {
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) vm.importCsv(uri, onImported)
+    }
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         if (uri != null) vm.exportCsv(uri, onExported)
     }
@@ -113,6 +121,12 @@ fun ExpensesScreen(vm: BudgetViewModel, onEdit: (Long) -> Unit, onExported: (Int
                 onClick = { exportLauncher.launch(CsvExport.fileName(LocalDate.now())) },
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             ) { Text("Export all expenses as CSV") }
+        }
+        item {
+            OutlinedButton(
+                onClick = { importLauncher.launch(arrayOf("*/*")) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Import expenses from a CSV") }
         }
     }
 }

@@ -28,6 +28,7 @@ class InMemoryLedgerStore : LedgerStore {
     override fun deleteMerchant(id: Long) { merchants.remove(id) }
 
     override fun merchantIdForKey(key: String) = aliases[key]
+    override fun aliases(): Map<String, Long> = aliases.toMap()
     override fun setAlias(key: String, merchantId: Long) { aliases[key] = merchantId }
     override fun repointAliases(fromMerchantId: Long, toMerchantId: Long) {
         aliases.replaceAll { _, v -> if (v == fromMerchantId) toMerchantId else v }
