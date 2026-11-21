@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A white coin with a green dollar sign, inside the 66dp safe zone of the 108dp adaptive icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54m-27,0a27,27 0 1,1 54,0a27,27 0 1,1 -54,0" />
+
+    <path
+        android:strokeColor="#B9DECF"
+        android:strokeWidth="1.6"
+        android:pathData="M54,54m-22.5,0a22.5,22.5 0 1,1 45,0a22.5,22.5 0 1,1 -45,0" />
+
+    <path
+        android:strokeColor="#0B6E4F"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M54,36L54,72" />
+
+    <path
+        android:strokeColor="#0B6E4F"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M62,45.5C62,40 46,39 46,47.5C46,56.5 62,51.5 62,60.5C62,69 46,68 46,62.5" />
+</vector>
